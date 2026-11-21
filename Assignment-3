@@ -1,1 +1,66 @@
+def normalize_name(name):
+    name = name.lower().strip()
+    titles = ["dr.", "mr.", "mrs.", "ms."]
+    for title in titles:
+        if name.startswith(title):
+            name = name[len(title):].strip()
+    return " ".join(name.split())
+
+def normalize_phone(phone):
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    if len(digits) == 10:
+        return digits
+    return None
+
+def merge_contacts(contacts):
+    merged = []
+    phone_index = {}
+    for contact in contacts:
+        name = normalize_name(contact.get("name", ""))
+        phones = {p for p in (normalize_phone(x) for x in contact.get("phones", [])) if p is not None}
+        emails = {e.strip().lower() for e in contact.get('emails', []) if e.strip()}
+        # Find existing matching contact records
+        matches = []
+        for phone in phones:
+            if phone in phone_index:
+                record = phone_index[phone]
+                if record not in matches:
+                    matches.append(record)
+        if matches:
+            target = matches[0]
+            # Merge other matching records if necessary
+            for other in matches[1:]:
+                target["names"].update(other["names"])
+                target["phones"].update(other["phones"])
+                target["emails"].update(other["emails"])
+                merged.remove(other)
+            target["names"].add(name)
+            target["phones"].update(phones)
+            target["emails"].update(emails)
+        else:
+            target = {"names": {name} if name else set(), "phones": set(phones), "emails": set(emails)}
+            merged.append(target)
+        # Update phone lookup dictionary
+        for phone in target["phones"]:
+            phone_index[phone] = target
+    return merged
+
+# Sample contacts from different devices
+contacts = [
+{"name": "Dr. Ravi", "phones": ["+91 98400 12345"], "emails": ["RAVI@gmail.com"]},
+{'name': 'ravi kumar', "phones": ["9840012345", "9876543210"], "emails": ["ravi@yahoo.com"]},
+{'name': 'Anita', "phones": ["9876501234"], "emails": ["anita@gmail.com"]},
+{'name': 'RAVI', "phones": ["9876543210"], "emails": ["RAVI@gmail.com"]},
+{"name": "Kumar", "phones": [], 'emails': []}
+]
+
+result = merge_contacts(contacts)
+print("Consolidated Contacts:")
+for i, contact in enumerate(result, 1):
+    print("\nContact", i)
+    print('Names:', sorted(contact['names']))
+    print('Phones:', sorted(contact["phones"]))
+    print('Emails:', sorted(contact['emails']))
 
