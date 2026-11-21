@@ -1,1 +1,96 @@
+# ASSIGNMENT 5 – PART B
+# Integrated Environmental Monitoring and Citizen Complaint Analysis
 
+import csv
+import io
+import sqlite3
+import statistics
+import random
+import re
+import time
+import cProfile
+import pstats
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+
+import pandas as pd
+import matplotlib.pyplot as plt
+
+random.seed(42)
+
+POSITIVE = {
+    "good", "excellent", "clean", "happy", "safe",
+    "improved", "fresh", "better", "helpful"
+}
+NEGATIVE = {
+    "bad", "poor", "dirty", "unsafe", "terrible",
+    "polluted", "worse", "harmful", "unhealthy"
+}
+NEGATORS = {"not", "never", "no"}
+STOPWORDS = {
+    "the", "is", "a", "an", "and", "to", "of", "in", "it",
+    "this", "that", "was", "are", "for", "with", "on", "at",
+    "we", "our"
+}
+
+RAW = """station,date,pm25,temperature
+Adyar,2026-10-01,45,30
+Guindy,2026-10-01,70,32
+Adyar,2026-10-02,NA,29
+Guindy,2026-10-02,-5,31
+Adyar,2026-10-03,80,28
+Guindy,2026-10-03,1100,33
+Adyar,2026-10-04,,30
+Adyar,2026-10-01,45,30
+Guindy,2026-10-04,65,31
+"""
+
+# -------------------- B1: CLEANING --------------------
+
+def load_clean(csv_text):
+    """Read CSV text and return valid, unique station readings."""
+    result = []
+    seen = set()
+    reader = csv.DictReader(io.StringIO(csv_text))
+    required = {"station", "date", "pm25"}
+
+    if not reader.fieldnames or not required.issubset(reader.fieldnames):
+        raise ValueError("Required CSV columns are missing")
+
+    for row in reader:
+        try:
+            # DictReader stores extra columns under the None key.
+            if None in row:
+                continue
+            station = (row.get("station") or "").strip().title()
+            date_text = (row.get("date") or "").strip()
+            value_text = (row.get("pm25") or "").strip()
+
+            if not station or not date_text or not value_text:
+                continue
+            if value_text.upper() == "NA":
+                continue
+
+            pm25 = float(value_text)
+            if not 0 <= pm25 <= 999:
+                continue
+
+            # Accept ISO date or ISO date-time, then standardise to date.
+            try:
+                parsed_date = datetime.fromisoformat(date_text.replace("Z", "+00:00"))
+            except ValueError:
+                parsed_date = datetime.strptime(date_text, "%d-%m-%Y")
+            day = parsed_date.strftime("%Y-%m-%d")
+
+            temperature_text = (row.get("temperature") or "").strip()
+            temperature = None
+            if temperature_text:
+                try:
+                    temperature = float(temperature_text)
+                except ValueError:
+                    temperature = None
+
+            record = (station, day, pm25, temperature)
+            if record not in seen:
+                result.append(record)
+                seen.add(record)
