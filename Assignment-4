@@ -1,1 +1,96 @@
 
+# PYTHON ASSIGNMENT 4 - MASTER PROGRAM
+# Save this file as assignment4_master.py and run: py assignment4_master.py
+# It creates the task folders/files and runs every program automatically.
+
+from pathlib import Path
+import subprocess
+import sys
+import textwrap
+
+ROOT = Path("Python_Assignment_4")
+ROOT.mkdir(exist_ok=True)
+
+def put(name, content):
+    path = ROOT / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(textwrap.dedent(content).lstrip(), encoding="utf-8")
+
+# TASK 1: FILE PROCESSING
+put("Task1/mess_oct.txt", '''
+101,Arun,1250.50
+102,Divya,980
+103,Kavin,abc
+104,Meena,1450.75
+105,,900
+106,Ravi,1100
+''')
+put("Task1/task1_mess.py", r'''
+import csv
+from decimal import Decimal, InvalidOperation
+
+def process_mess_file(filename):
+    rejected = []
+    processed = 0
+    print("\nHOSTEL MESS BILL REPORT")
+    try:
+        with open(filename, "r", newline="", encoding="utf-8") as file:
+            for line_no, row in enumerate(csv.reader(file), 1):
+                if not row or not any(x.strip() for x in row):
+                    continue
+                try:
+                    if len(row) != 3:
+                        raise ValueError("Expected exactly 3 fields")
+                    reg, name, amount_text = [x.strip() for x in row]
+                    if not reg or not name:
+                        raise ValueError("Register number or name is empty")
+                    amount = Decimal(amount_text)
+                    if amount < 0:
+                        raise ValueError("Negative bill amount")
+                    print(f"{reg:<10} {name:<15} Rs. {amount:.2f}")
+                    processed += 1
+                except (ValueError, InvalidOperation) as error:
+                    rejected.append(f"Line {line_no}: {row} | {error}")
+    except FileNotFoundError:
+        print("Input file not found.")
+        return
+    except OSError as error:
+        print("File error:", error)
+        return
+    print("Processed:", processed, "| Rejected:", len(rejected))
+    for item in rejected:
+        print(item)
+
+if __name__ == "__main__":
+    process_mess_file("mess_oct.txt")
+''')
+
+# TASK 2: MULTIPLE ATTENDANCE FILES
+put("Task2/attendance_files/day1.txt", '''
+101,01-10-2026,P
+102,01-10-2026,A
+103,01-10-2026,X
+104,01-10-2026,P
+''')
+put("Task2/attendance_files/day2.txt", '''
+101,02-10-2026,A
+102,02-10-2026,P
+103,02-10-2026,P
+104,02-10-2026,P
+''')
+put("Task2/attendance_files/day3.txt", '''
+101,03-10-2026,P
+102,03-10-2026,P
+103,03-10-2026,P
+104,03-10-2026,A
+''')
+put("Task2/task2_attendance.py", r'''
+import os
+
+def process_attendance(folder):
+    attendance, errors = {}, []
+    try:
+        filenames = sorted(x for x in os.listdir(folder) if x.endswith(".txt"))
+    except OSError as error:
+        print("Directory error:", error)
+        return
