@@ -1,42 +1,97 @@
+
 from decimal import Decimal, ROUND_HALF_UP
 
-RATE_CARDS = {"REGULAR": {"base": Decimal("30.00"),"fat": Decimal("0.40"),"snf": Decimal("0.30")},"SUMMER_LEAN": {"base
+# Milk rate cards
+RATE_CARDS = {
+    "REGULAR": {
+        "base": Decimal("30.00"),
+        "fat": Decimal("0.40"),
+        "snf": Decimal("0.30")
+    },
+    "SUMMER_LEAN": {
+        "base": Decimal("32.00"),
+        "fat": Decimal("0.45"),
+        "snf": Decimal("0.30")
+    }
+}
+
 STD_FAT = Decimal("3.50")
 STD_SNF = Decimal("8.50")
+
 BONUS_LIMIT = Decimal("500.00")
 BONUS_RATE = Decimal("0.50")
+
 STEP = Decimal("0.10")
 CENT = Decimal("0.01")
 
+
 def compute_steps(reading, standard):
-    return ((reading - standard) / STEP).quantize( Decimal("1"), rounding=ROUND_HALF_UP)
+    return ((reading - standard) / STEP).quantize(
+        Decimal("1"),
+        rounding=ROUND_HALF_UP
+    )
+
 
 def calculate_rate(fat, snf, season):
     rates = RATE_CARDS[season]
-    fat_steps = compute_steps(fat, STD_FAT)
 
+    fat_steps = compute_steps(fat, STD_FAT)
     snf_steps = compute_steps(snf, STD_SNF)
-    return (rates["base"] +fat_steps * rates["fat"] + snf_steps * rates["snf"])
+
+    return (
+        rates["base"]
+        + fat_steps * rates["fat"]
+        + snf_steps * rates["snf"]
+    )
+
 
 def calculate_payout(entries, season):
     total_litres = Decimal("0")
     total_payment = Decimal("0")
+
     for litres, fat, snf in entries:
         rate = calculate_rate(fat, snf, season)
-        amount = (litres * rate).quantize(CENT, rounding=ROUND_HALF_UP )
+
+        amount = (litres * rate).quantize(
+            CENT,
+            rounding=ROUND_HALF_UP
+        )
+
         total_litres += litres
         total_payment += amount
+
     bonus = Decimal("0")
+
     if total_litres > BONUS_LIMIT:
-        bonus = (total_litres * BONUS_RATE).quantize(CENT)
-    return total_litres, total_payment, bonus, total_payment + bonus
+        bonus = (total_litres * BONUS_RATE).quantize(
+            CENT,
+            rounding=ROUND_HALF_UP
+        )
+
+    return (
+        total_litres,
+        total_payment,
+        bonus,
+        total_payment + bonus
+    )
+
 
 # Test delivery
-entries = [(Decimal("20.00"),Decimal("4.00"),Decimal("8.50"))]
+entries = [
+    (Decimal("20.00"), Decimal("4.00"), Decimal("8.50"))
+]
+
 for season in RATE_CARDS:
     print(season, calculate_payout(entries, season))
 
+
 # Volume bonus boundary tests
 for litres in ["495.00", "500.00", "520.00"]:
-    entries = [(Decimal(litres), Decimal("3.50"), Decimal("8.50"))]
-    print(litres, calculate_payout(entries, "REGULAR"))
+    entries = [
+        (Decimal(litres), Decimal("3.50"), Decimal("8.50"))
+    ]
+
+    print(
+        litres,
+        calculate_payout(entries, "REGULAR")
+    )
